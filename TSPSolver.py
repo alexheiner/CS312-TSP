@@ -81,7 +81,7 @@ class TSPSolver:
 		algorithm</returns> 
 	'''
 
-# size 10 diff easy seed 20 path: G, I, C, F, B, D, A, H, J, E,
+# size 10 diff easy seed 20 path: G, I, C, F, B, D, A, H, J, E, and possibly G?
 
 	def greedy(self,time_allowance=60.0):
 		results = {}
