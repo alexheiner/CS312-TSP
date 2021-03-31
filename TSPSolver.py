@@ -81,6 +81,8 @@ class TSPSolver:
 		algorithm</returns> 
 	'''
 
+# size 10 diff easy seed 20 path: G, I, C, F, B, D, A, H, J, E,
+
 	def greedy(self,time_allowance=60.0):
 		results = {}
 		path = []
@@ -88,10 +90,10 @@ class TSPSolver:
 		path.append(cities[0])
 		visited = set()
 		index = random.randint(0, len(cities) - 1)
-		start_time = time.time()
+		#start_time = time.time()
 		found_path = False
 		valid_path = False
-		while not found_path and time.time()-start_time < time_allowance:
+		while not found_path: #and time.time()-start_time < time_allowance:
 			shortest_edge = 0
 			curr_city = cities[index]
 			if len(cities) == len(visited):
@@ -104,26 +106,30 @@ class TSPSolver:
 			if not visited.__contains__(curr_city):
 				visited.add(curr_city)
 				for city in cities:
-					edge = City.costTo(city)
+					edge = curr_city.costTo(city)
 					if edge is not math.inf:
 						if shortest_edge == 0:
 							shortest_edge = edge
 							index = city._index
-							path.append(city)
+							curr_city = city
 						elif edge < shortest_edge:
 							shortest_edge = edge
 							index = city._index
-							path.append(city)
-		end_time = time.time()
+							curr_city = city
+				path.append(cities[index])
+		#end_time = time.time()
 		if not found_path:
 			return 0
 		elif valid_path and found_path:
 			bssf = TSPSolution(path)
 			results['cost'] = bssf.cost
-			results['time'] = end_time - start_time
+			#results['time'] = end_time - start_time
 			results['count'] = 1
 			results['soln'] = bssf
-			return 0
+			results['max'] = None
+			results['total'] = None
+			results['pruned'] = None
+			return results
 		elif not valid_path and not found_path:
 			return self.greedy()
 
