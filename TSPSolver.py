@@ -87,51 +87,69 @@ class TSPSolver:
 		results = {}
 		path = []
 		cities = self._scenario.getCities()
-		path.append(cities[0])
+
 		visited = set()
-		index = random.randint(0, len(cities) - 1)
-		#start_time = time.time()
+		start_index = random.randint(0, len(cities) - 1)
+
+		index = start_index
+		path.append(cities[index])
+		visited.add(cities[index])
+		start_time = time.time()
 		found_path = False
 		valid_path = False
-		while not found_path: #and time.time()-start_time < time_allowance:
+		while not found_path:# and time.time()-start_time < time_allowance:
 			shortest_edge = 0
 			curr_city = cities[index]
 			if len(cities) == len(visited):
-				final_edge = City.costTo(cities[0])
-				if final_edge is not math.inf:
+				city = cities[start_index]
+				final_edge = curr_city.costTo(city)
+				if final_edge is not np.inf:
 					valid_path = True
-					path.append(cities[0])
+				else:
+					print('here')
 				found_path = True
+				break
 
-			if not visited.__contains__(curr_city):
-				visited.add(curr_city)
-				for city in cities:
+			for city in cities:
+				if city._name is not curr_city._name and not visited.__contains__(city):
 					edge = curr_city.costTo(city)
 					if edge is not math.inf:
 						if shortest_edge == 0:
 							shortest_edge = edge
 							index = city._index
-							curr_city = city
+
 						elif edge < shortest_edge:
 							shortest_edge = edge
 							index = city._index
-							curr_city = city
+			# all edge values were infinity
+			if shortest_edge != 0:
+				visited.add(cities[index])
 				path.append(cities[index])
-		#end_time = time.time()
+			else:
+				print('no edges')
+		end_time = time.time()
 		if not found_path:
-			return 0
-		elif valid_path and found_path:
+			results['cost'] = math.inf
+			results['time'] = end_time - start_time
+			results['count'] = 0
+			results['soln'] = None
+			results['max'] = None
+			results['total'] = None
+			results['pruned'] = None
+			return results
+		elif found_path and valid_path:
 			bssf = TSPSolution(path)
+			cost = bssf.cost
 			results['cost'] = bssf.cost
-			#results['time'] = end_time - start_time
+			results['time'] = end_time - start_time
 			results['count'] = 1
 			results['soln'] = bssf
 			results['max'] = None
 			results['total'] = None
 			results['pruned'] = None
 			return results
-		elif not valid_path and not found_path:
-			return self.greedy()
+		elif not valid_path and found_path:
+			self.greedy()
 
 
 	''' <summary>
