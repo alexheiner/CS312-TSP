@@ -84,14 +84,16 @@ class TSPSolver:
 
 # size 15 diff hard seed 20 path: D, H, J, E, I, M, N, G, K, C, F, B, A, L, O
 
+# check size 40 starting index of 8 and random sead of 918, no outgoing edges??
+
 	def greedy(self,time_allowance=60.0):
 		results = {}
 		path = []
 		cities = self._scenario.getCities()
 
 		visited = set()
-		#start_index = random.randint(0, len(cities) - 1)
-		start_index = 3
+		start_index = random.randint(0, len(cities) - 1)
+		#start_index = 8
 
 		index = start_index
 		# path.append(cities[index])
@@ -99,11 +101,17 @@ class TSPSolver:
 		start_time = time.time()
 		found_path = False
 		valid_path = False
+		shortest_edge = 0
 		while not found_path:# and time.time()-start_time < time_allowance:
-			shortest_edge = 0
-			curr_city = cities[index]
-			path.append(cities[index])
-			visited.add(cities[index])
+			if shortest_edge is not np.inf:
+				curr_city = cities[index]
+				path.append(cities[index])
+				visited.add(cities[index])
+			else:
+				print('here')
+				found_path = True
+				break
+			shortest_edge = np.inf
 			if len(cities) == len(visited):
 				city = cities[start_index]
 				final_edge = curr_city.costTo(city)
@@ -111,25 +119,18 @@ class TSPSolver:
 					valid_path = True
 				found_path = True
 				break
-
 			for city in cities:
 				if city._name is not curr_city._name and not visited.__contains__(city):
 					edge = curr_city.costTo(city)
 					if edge is not np.inf:
-						if shortest_edge == 0:
+						if shortest_edge == np.inf:
 							shortest_edge = edge
 							index = city._index
 
 						elif edge < shortest_edge:
 							shortest_edge = edge
 							index = city._index
-			# all edge values were infinity
-			# if shortest_edge != 0:
-			# 	visited.add(cities[index])
-			# 	path.append(cities[index])
-			# else:
-			# 	break
-			# 	print('no edges')
+
 		end_time = time.time()
 		if not found_path:
 			results['cost'] = math.inf
@@ -177,9 +178,14 @@ class TSPSolver:
 					cityj = cities[j]
 					matrix[i][j] = cityi.costTo(cityj)
 
-		initial_state = State(matrix, 0, 0, set(), set())
+		initial_state = State(matrix, 0, 0)
 
-		initial_state.reduce_matrix()
+		initial_state.reduce_first_state()
+
+		start_index = random.randint(0, len(cities) - 1)
+
+		initial_state.add_set_rows(start_index)
+
 
 
 
