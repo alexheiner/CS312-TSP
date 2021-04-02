@@ -14,6 +14,7 @@ else:
 import time
 import numpy as np
 from TSPClasses import *
+from State import *
 import heapq
 import itertools
 
@@ -81,7 +82,7 @@ class TSPSolver:
 		algorithm</returns> 
 	'''
 
-# size 10 diff easy seed 20 path: G, I, C, F, B, D, A, H, J, E, and possibly G?
+# size 15 diff hard seed 20 path: D, H, J, E, I, M, N, G, K, C, F, B, A, L, O
 
 	def greedy(self,time_allowance=60.0):
 		results = {}
@@ -89,31 +90,32 @@ class TSPSolver:
 		cities = self._scenario.getCities()
 
 		visited = set()
-		start_index = random.randint(0, len(cities) - 1)
+		#start_index = random.randint(0, len(cities) - 1)
+		start_index = 3
 
 		index = start_index
-		path.append(cities[index])
-		visited.add(cities[index])
+		# path.append(cities[index])
+		# visited.add(cities[index])
 		start_time = time.time()
 		found_path = False
 		valid_path = False
 		while not found_path:# and time.time()-start_time < time_allowance:
 			shortest_edge = 0
 			curr_city = cities[index]
+			path.append(cities[index])
+			visited.add(cities[index])
 			if len(cities) == len(visited):
 				city = cities[start_index]
 				final_edge = curr_city.costTo(city)
 				if final_edge is not np.inf:
 					valid_path = True
-				else:
-					print('here')
 				found_path = True
 				break
 
 			for city in cities:
 				if city._name is not curr_city._name and not visited.__contains__(city):
 					edge = curr_city.costTo(city)
-					if edge is not math.inf:
+					if edge is not np.inf:
 						if shortest_edge == 0:
 							shortest_edge = edge
 							index = city._index
@@ -122,11 +124,12 @@ class TSPSolver:
 							shortest_edge = edge
 							index = city._index
 			# all edge values were infinity
-			if shortest_edge != 0:
-				visited.add(cities[index])
-				path.append(cities[index])
-			else:
-				print('no edges')
+			# if shortest_edge != 0:
+			# 	visited.add(cities[index])
+			# 	path.append(cities[index])
+			# else:
+			# 	break
+			# 	print('no edges')
 		end_time = time.time()
 		if not found_path:
 			results['cost'] = math.inf
@@ -149,7 +152,7 @@ class TSPSolver:
 			results['pruned'] = None
 			return results
 		elif not valid_path and found_path:
-			self.greedy()
+			return self.greedy()
 
 
 	''' <summary>
@@ -162,7 +165,25 @@ class TSPSolver:
 	'''
 		
 	def branchAndBound( self, time_allowance=60.0 ):
-		pass
+		cities = self._scenario.getCities()
+		matrix = [[math.inf for x in range(len(cities))] for y in range(len(cities))]
+		bssf = self.greedy()['cost']
+		for i in range(len(cities)):
+			for j in range(len(cities)):
+				if i == j:
+					continue
+				else:
+					cityi = cities[i]
+					cityj = cities[j]
+					matrix[i][j] = cityi.costTo(cityj)
+
+		initial_state = State(matrix, 0, 0, set(), set())
+
+		initial_state.reduce_matrix()
+
+
+
+		print('hello')
 
 
 
