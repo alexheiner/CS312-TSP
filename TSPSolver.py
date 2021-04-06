@@ -93,7 +93,7 @@ class TSPSolver:
 
 		visited = set()
 		start_index = random.randint(0, len(cities) - 1)
-		#start_index = 8
+		#start_index = 2
 
 		index = start_index
 		# path.append(cities[index])
@@ -108,7 +108,6 @@ class TSPSolver:
 				path.append(cities[index])
 				visited.add(cities[index])
 			else:
-				print('here')
 				found_path = True
 				break
 			shortest_edge = np.inf
@@ -178,19 +177,24 @@ class TSPSolver:
 					cityj = cities[j]
 					matrix[i][j] = cityi.costTo(cityj)
 
-		initial_state = State(matrix, 0, 0)
-
+		initial_state = State(matrix, None)
 		initial_state.reduce_first_state()
 
-		start_index = random.randint(0, len(cities) - 1)
+		start_city = cities[random.randint(0, len(cities) - 1)]
 
-		initial_state.add_set_rows(start_index)
-
-
-
+		initial_state.add_set_rows(start_city._index)
+		initial_state.add_path_set(start_city._index)
+		initial_state.add_path_arr(start_city._index)
+		temp_set = initial_state.get_path_set()
+		self.create_states(cities, initial_state, temp_set)
 
 		print('hello')
 
+	def create_states(self, cities, parent_state, city_set):
+		for city in cities:
+			if not city_set.__contains__(city._index):
+				new_state = State(None, parent_state)
+				new_state.reduce_matrix(city._index)
 
 
 	''' <summary>
