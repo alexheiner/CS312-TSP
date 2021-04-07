@@ -82,46 +82,58 @@ class TSPSolver:
 		algorithm</returns> 
 	'''
 
-# size 15 diff hard seed 20 path: D, H, J, E, I, M, N, G, K, C, F, B, A, L, O
-
-# check size 40 starting index of 8 and random sead of 918, no outgoing edges??
-
 	def greedy(self,time_allowance=60.0):
 		results = {}
+
+		# path array to keep track of path in order
 		path = []
+
+		# get cities
 		cities = self._scenario.getCities()
 
+		# create visited set to keep track of cities we have already seen
 		visited = set()
+
+		# random stat index
 		start_index = random.randint(0, len(cities) - 1)
-		#start_index = 2
 
 		index = start_index
-		# path.append(cities[index])
-		# visited.add(cities[index])
+
 		start_time = time.time()
+
 		found_path = False
 		valid_path = False
 		shortest_edge = 0
-		while not found_path:# and time.time()-start_time < time_allowance:
+		while not found_path and time.time()-start_time < time_allowance:
+
+			# if we found a shortest edge add it to our path, visited set, and get the next city
 			if shortest_edge is not np.inf:
 				curr_city = cities[index]
 				path.append(cities[index])
 				visited.add(cities[index])
 			else:
+				# break from loop, no out going edges from city
 				found_path = True
 				break
+
+			# set shortest edge to infinity, see if we can update it to something smaller
 			shortest_edge = np.inf
+
+			# if we have visited all of our cities
 			if len(cities) == len(visited):
-				city = cities[start_index]
-				final_edge = curr_city.costTo(city)
+				first_city = cities[start_index]
+				final_edge = curr_city.costTo(first_city)
+				# see if path from final edge to start edge is possible
 				if final_edge is not np.inf:
 					valid_path = True
 				found_path = True
 				break
 			for city in cities:
+				# if we are not on our current city and we havent visited city, get edge
 				if city._name is not curr_city._name and not visited.__contains__(city):
 					edge = curr_city.costTo(city)
 					if edge is not np.inf:
+						# base case
 						if shortest_edge == np.inf:
 							shortest_edge = edge
 							index = city._index
@@ -131,6 +143,7 @@ class TSPSolver:
 							index = city._index
 
 		end_time = time.time()
+		# if we ran out of time
 		if not found_path:
 			results['cost'] = math.inf
 			results['time'] = end_time - start_time
@@ -140,9 +153,9 @@ class TSPSolver:
 			results['total'] = None
 			results['pruned'] = None
 			return results
+		# if we found a path and it was valid
 		elif found_path and valid_path:
 			bssf = TSPSolution(path)
-			cost = bssf.cost
 			results['cost'] = bssf.cost
 			results['time'] = end_time - start_time
 			results['count'] = 1
@@ -151,6 +164,7 @@ class TSPSolver:
 			results['total'] = None
 			results['pruned'] = None
 			return results
+		# start over with new city
 		elif not valid_path and found_path:
 			return self.greedy()
 
@@ -165,16 +179,24 @@ class TSPSolver:
 	'''
 		
 	def branchAndBound( self, time_allowance=60.0 ):
+		# values to return
 		self.solution_found = 0
 		self.total_pruned = 0
 		self.states_created = 0
 		self.max_queue = 0
 		results = {}
+		# get cities
 		cities = self._scenario.getCities()
+
+		# initialize queue and heapify
 		self.queue = []
 		heapq.heapify(self.queue)
-		matrix = [[math.inf for x in range(len(cities))] for y in range(len(cities))]
+
+		# get bssf from greedy
 		self.bssf = self.greedy()['soln']
+
+		# initialize and populate matrix
+		matrix = [[math.inf for x in range(len(cities))] for y in range(len(cities))]
 		for i in range(len(cities)):
 			for j in range(len(cities)):
 				if i == j:
@@ -184,23 +206,33 @@ class TSPSolver:
 					cityj = cities[j]
 					matrix[i][j] = cityi.costTo(cityj)
 
+		# pick random starting index
 		self.start_index = random.randint(0, len(cities) - 1)
+
+		# create initial state and reduce it
 		initial_state = State(matrix, None, self.start_index, cities)
 		initial_state.reduce_first_state()
 
-		heapq.heappush(self.queue, (0, initial_state))
+		# push initial state to queue with key of 1
+		heapq.heappush(self.queue, (1, initial_state))
 		start_time = time.time()
+
 		while len(self.queue) != 0 and time.time()-start_time < time_allowance:
+
+			# update max size of queue
 			if len(self.queue) > self.max_queue:
 				self.max_queue = len(self.queue)
 
+			# get parent state from the top of the queue
 			key, parent_state = heapq.heappop(self.queue)
 
+			# if parent state is less than the lower bound explore it's possible cities
 			if parent_state.state_lower_bound < self.bssf.cost:
 				self.create_states(cities, parent_state)
 
 		end_time = time.time()
 
+		# return results
 		results['cost'] = self.bssf.cost
 		results['time'] = end_time - start_time
 		results['count'] = self.solution_found
@@ -211,34 +243,40 @@ class TSPSolver:
 		return results
 
 	def create_states(self, cities, parent_state):
+		# if we have visited all cities, check if we can get back to the first
 		if len(parent_state.path_set) == len(cities):
 			last_city = parent_state.path[-1]
 			start_city = cities[self.start_index]
 			if last_city.costTo(start_city) is not np.inf:
+				# update solution if we have found a better one
 				solution = TSPSolution(parent_state.path)
 				if solution.cost < self.bssf.cost:
 					self.bssf = solution
+					self.prune()
+			# if path back to first city is not possible we are done
 			else:
 				return
-			self.prune()
 		else:
 			for city in cities:
+				# if current city hasn't been visited
 				if not parent_state.path_set.__contains__(city._index):
 					new_state = State(None, parent_state, city._index, cities)
 					new_state.reduce_matrix()
+					# increment number of states created
 					self.states_created += 1
+					# if new created state has cost less than bssf add to queue with key
 					if new_state.state_lower_bound < self.bssf.cost:
-						# put it on the queue
-						#new_state.add_path_set(city._index)
 						key = new_state.get_key()
 						heapq.heappush(self.queue, (key, new_state))
 
 	def prune(self):
 		for tuple in self.queue:
 			key, state = tuple
-			if state.state_lower_bound <= self.bssf.cost:
+			# remove state from queue if its lower bound is greater than bssf
+			if state.state_lower_bound >= self.bssf.cost:
 				self.queue.remove(tuple)
 				self.total_pruned += 1
+		# increment number of solutions found
 		self.solution_found += 1
 
 
