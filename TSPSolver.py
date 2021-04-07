@@ -229,7 +229,7 @@ class TSPSolver:
 					self.states_created += 1
 					if new_state.state_lower_bound < self.bssf.cost:
 						# put it on the queue
-						new_state.add_path_set(city._index)
+						#new_state.add_path_set(city._index)
 						key = new_state.get_key()
 						heapq.heappush(self.queue, (key, new_state))
 
