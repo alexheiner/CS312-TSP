@@ -165,9 +165,16 @@ class TSPSolver:
 	'''
 		
 	def branchAndBound( self, time_allowance=60.0 ):
+		self.solution_found = 0
+		self.total_pruned = 0
+		self.states_created = 0
+		self.max_queue = 0
+		results = {}
 		cities = self._scenario.getCities()
+		self.queue = []
+		heapq.heapify(self.queue)
 		matrix = [[math.inf for x in range(len(cities))] for y in range(len(cities))]
-		bssf = self.greedy()['cost']
+		self.bssf = self.greedy()['soln']
 		for i in range(len(cities)):
 			for j in range(len(cities)):
 				if i == j:
@@ -177,24 +184,63 @@ class TSPSolver:
 					cityj = cities[j]
 					matrix[i][j] = cityi.costTo(cityj)
 
-		initial_state = State(matrix, None)
+		self.start_index = random.randint(0, len(cities) - 1)
+		initial_state = State(matrix, None, self.start_index, cities)
 		initial_state.reduce_first_state()
 
-		start_city = cities[random.randint(0, len(cities) - 1)]
+		heapq.heappush(self.queue, (0, initial_state))
+		start_time = time.time()
+		while len(self.queue) != 0 and time.time()-start_time < time_allowance:
+			if len(self.queue) > self.max_queue:
+				self.max_queue = len(self.queue)
 
-		initial_state.add_set_rows(start_city._index)
-		initial_state.add_path_set(start_city._index)
-		initial_state.add_path_arr(start_city._index)
-		temp_set = initial_state.get_path_set()
-		self.create_states(cities, initial_state, temp_set)
+			key, parent_state = heapq.heappop(self.queue)
 
-		print('hello')
+			if parent_state.state_lower_bound < self.bssf.cost:
+				self.create_states(cities, parent_state)
 
-	def create_states(self, cities, parent_state, city_set):
-		for city in cities:
-			if not city_set.__contains__(city._index):
-				new_state = State(None, parent_state)
-				new_state.reduce_matrix(city._index)
+		end_time = time.time()
+
+		results['cost'] = self.bssf.cost
+		results['time'] = end_time - start_time
+		results['count'] = self.solution_found
+		results['soln'] = self.bssf
+		results['max'] = self.max_queue
+		results['total'] = self.states_created
+		results['pruned'] = self.total_pruned
+		return results
+
+	def create_states(self, cities, parent_state):
+		if len(parent_state.path_set) == len(cities):
+			last_city = parent_state.path[-1]
+			start_city = cities[self.start_index]
+			if last_city.costTo(start_city) is not np.inf:
+				solution = TSPSolution(parent_state.path)
+				if solution.cost < self.bssf.cost:
+					self.bssf = solution
+			else:
+				return
+			self.prune()
+		else:
+			for city in cities:
+				if not parent_state.path_set.__contains__(city._index):
+					new_state = State(None, parent_state, city._index, cities)
+					new_state.reduce_matrix()
+					self.states_created += 1
+					if new_state.state_lower_bound < self.bssf.cost:
+						# put it on the queue
+						new_state.add_path_set(city._index)
+						key = new_state.get_key()
+						heapq.heappush(self.queue, (key, new_state))
+
+	def prune(self):
+		for tuple in self.queue:
+			key, state = tuple
+			if state.state_lower_bound <= self.bssf.cost:
+				self.queue.remove(tuple)
+				self.total_pruned += 1
+		self.solution_found += 1
+
 
 
 	''' <summary>
