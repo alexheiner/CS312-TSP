@@ -4,21 +4,9 @@ import copy
 
 class State:
 
-    def __init__(self, mtx, parent_state, city_ind, cities):
-        # properties for our initial state
-        if parent_state is None:
-            #
-            self.parent_lower_bound = None
-            self.matrix = mtx
-            self.depth = 1
-            self.state_lower_bound = 0
-            self.set_rows = set()
-            self.set_cols = set()
-            self.path = [cities[city_ind]]
-            self.path_set = {city_ind}
-            self.to_city_ind = city_ind
+    def __init__(self, parent_state, city_ind, cities):
         # properties for states other than initial
-        else:
+        if parent_state != None:
             self.parent_state = parent_state
             # copy the parent states matrix
             self.matrix = copy.deepcopy(parent_state.matrix)
@@ -38,48 +26,78 @@ class State:
             self.path = copy.deepcopy(parent_state.path)
             self.path_set = copy.deepcopy(parent_state.path_set)
 
-            # add current city to path set and array
-            self.path.append(cities[city_ind])
-            self.path_set.add(city_ind)
-
             # set to and from city indexes
             self.from_city_ind = parent_state.to_city_ind
             self.to_city_ind = city_ind
 
-    def reduce_matrix(self):
+            self.reduce_matrix(cities)
+
+    # Time: O(n^2)
+    # Space: O(n) copy parent's matrix
+    def reduce_matrix(self, cities):
         # function to reduce states other than initial state
 
         # add cost of from city to city we want to go to
-        self.state_lower_bound += self.matrix[self.from_city_ind][self.to_city_ind]
+        cost_of_path = self.matrix[self.from_city_ind][self.to_city_ind]
 
         # block off column of city you are potentially going to
         # block off row of city you are at
         # set inverse to infinity
         # set rows and columns to infinity
-        for row in range(len(self.matrix)):
-            for col in range(len(self.matrix)):
-                if row == self.from_city_ind or col == self.to_city_ind:
-                    self.matrix[row][col] = math.inf
-                elif col == self.from_city_ind and row == self.to_city_ind:
-                    self.matrix[row][col] = math.inf
+
+        # infinite out row from_city_index
+        for i in range(len(self.matrix)):
+            self.matrix[self.from_city_ind][i] = math.inf
+
+        # infinite out column to_city_index
+        for i in range(len(self.matrix)):
+            self.matrix[i][self.to_city_ind] = math.inf
+
+        self.matrix[self.to_city_ind][self.from_city_ind] = math.inf
 
         # add from city to set rows and to city to set columns so we don't reduce on these values
         self.set_rows.add(self.from_city_ind)
         self.set_cols.add(self.to_city_ind)
 
         # get cost of reducing rows and columns
-        cost_row = self.reduce_rows()
-        cost_col = self.reduce_cols(self.to_city_ind)
+        cost_reduce = self.reduce_rows()
+        cost_reduce += self.reduce_cols(self.to_city_ind)
 
         # add cost of row and col to state's lower bound
-        self.state_lower_bound += cost_row + cost_col + self.parent_state.state_lower_bound
+        self.state_lower_bound = cost_reduce + cost_of_path + self.parent_lower_bound
+
+        # add current city to path set and array
+        self.path.append(cities[self.to_city_ind])
+        self.path_set.add(self.to_city_ind)
 
     def reduce_first_state(self):
-        # function to reduce the initial state
+        cost_row = self.reduce_rows()
+        cost_col = self.reduce_cols(self.to_city_ind)
+        self.state_lower_bound = cost_row + cost_col
 
-        min_row = self.reduce_rows()
-        min_col = self.reduce_cols()
-        self.state_lower_bound = min_row + min_col
+    def set_first_state(self, matrix, cities, start_ind):
+        self.matrix = copy.deepcopy(matrix)
+        self.parent_lower_bound = 0
+        self.depth = 1
+
+        # keep track of the cities that we have visited
+        self.path_set = set()
+        self.path = []
+
+        # when we travel between two cities, we will infinite-out the column and row
+        # we will keep track of which columns and rows are infinited-out with these sets
+        self.set_cols = set()
+        self.set_rows = set()
+
+        # select arbitrary start city
+
+        # save the start city as the to_index
+        self.to_city_ind = start_ind
+
+        self.path_set.add(start_ind)
+        self.path.append(cities[start_ind])
+
+        self.reduce_first_state()
 
     def reduce_rows(self):
         # row reduce
@@ -148,7 +166,7 @@ class State:
 
     def get_key(self):
         # key for the queue is states lower bound * 2 / 2. This helps incorporate depth and lower bound to key
-        return self.state_lower_bound * 2 / self.depth
+        return ((self.state_lower_bound * 2) / self.depth)
 
     # when a state with same lower bound and depth as another state on the queue, heapq.heappush
     # will compare the state objects using this function

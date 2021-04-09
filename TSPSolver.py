@@ -82,7 +82,11 @@ class TSPSolver:
 		algorithm</returns> 
 	'''
 
+	# Time Complexity: O(n^3) may need to pick up to n start cities
+	# Space Complexity: O(n) containing path
 	def greedy(self,time_allowance=60.0):
+
+		# create results
 		results = {}
 
 		# path array to keep track of path in order
@@ -172,13 +176,14 @@ class TSPSolver:
 	''' <summary>
 		This is the entry point for the branch-and-bound algorithm that you will implement
 		</summary>
-		<returns>results dictionary for GUI that contains three ints: cost of best solution, 
+		<returns>results dictionary for GUI that contains three ints: cost of best solution,
 		time spent to find best solution, total number solutions found during search (does
-		not include the initial BSSF), the best solution found, and three more ints: 
-		max queue size, total number of states created, and number of pruned states.</returns> 
+		not include the initial BSSF), the best solution found, and three more ints:
+		max queue size, total number of states created, and number of pruned states.</returns>
 	'''
-		
+
 	def branchAndBound( self, time_allowance=60.0 ):
+		start_time = time.time()
 		# values to return
 		self.solution_found = 0
 		self.total_pruned = 0
@@ -199,25 +204,21 @@ class TSPSolver:
 		matrix = [[math.inf for x in range(len(cities))] for y in range(len(cities))]
 		for i in range(len(cities)):
 			for j in range(len(cities)):
-				if i == j:
-					continue
-				else:
-					cityi = cities[i]
-					cityj = cities[j]
-					matrix[i][j] = cityi.costTo(cityj)
+				matrix[i][j] = cities[i].costTo(cities[j])
 
 		# pick random starting index
 		self.start_index = random.randint(0, len(cities) - 1)
 
 		# create initial state and reduce it
-		initial_state = State(matrix, None, self.start_index, cities)
-		initial_state.reduce_first_state()
+		#initial_state = State(matrix, None, self.start_index, cities)
+		initial_state = State(None, None, None)
+		initial_state.set_first_state(matrix, cities, self.start_index)
 
 		# push initial state to queue with key of 1
-		heapq.heappush(self.queue, (1, initial_state))
-		start_time = time.time()
+		heapq.heappush(self.queue, (initial_state.get_key(), initial_state))
 
-		while len(self.queue) != 0 and time.time()-start_time < time_allowance:
+
+		while len(self.queue) != 0 and time.time()-start_time <= time_allowance:
 
 			# update max size of queue
 			if len(self.queue) > self.max_queue:
@@ -226,9 +227,9 @@ class TSPSolver:
 			# get parent state from the top of the queue
 			key, parent_state = heapq.heappop(self.queue)
 
-			# if parent state is less than the lower bound explore it's possible cities
+			# look at states to visit
 			if parent_state.state_lower_bound < self.bssf.cost:
-				self.create_states(cities, parent_state)
+				self.create_states(parent_state)
 
 		end_time = time.time()
 
@@ -242,32 +243,37 @@ class TSPSolver:
 		results['pruned'] = self.total_pruned
 		return results
 
-	def create_states(self, cities, parent_state):
+	# Time:
+	# Space
+	def create_states(self, parent_state):
 		# if we have visited all cities, check if we can get back to the first
-		if len(parent_state.path_set) == len(cities):
+		if len(parent_state.path_set) == len(self._scenario.getCities()):
 			last_city = parent_state.path[-1]
-			start_city = cities[self.start_index]
+			start_city = parent_state.path[0]
 			if last_city.costTo(start_city) is not np.inf:
 				# update solution if we have found a better one
 				solution = TSPSolution(parent_state.path)
 				if solution.cost < self.bssf.cost:
 					self.bssf = solution
 					self.prune()
+					# increment number of solutions found
+					self.solution_found += 1
 			# if path back to first city is not possible we are done
 			else:
 				return
 		else:
-			for city in cities:
+			for i in range(len(self._scenario.getCities())):
 				# if current city hasn't been visited
-				if not parent_state.path_set.__contains__(city._index):
-					new_state = State(None, parent_state, city._index, cities)
-					new_state.reduce_matrix()
+				if i not in parent_state.path_set:
+					new_state = State(parent_state, i, self._scenario.getCities())
 					# increment number of states created
 					self.states_created += 1
 					# if new created state has cost less than bssf add to queue with key
-					if new_state.state_lower_bound < self.bssf.cost:
+					if new_state.state_lower_bound < self.bssf.cost and new_state.state_lower_bound != math.inf:
 						key = new_state.get_key()
 						heapq.heappush(self.queue, (key, new_state))
+					else:
+						self.total_pruned += 1
 
 	def prune(self):
 		for tuple in self.queue:
@@ -276,10 +282,6 @@ class TSPSolver:
 			if state.state_lower_bound >= self.bssf.cost:
 				self.queue.remove(tuple)
 				self.total_pruned += 1
-		# increment number of solutions found
-		self.solution_found += 1
-
-
 
 	''' <summary>
 		This is the entry point for the algorithm you'll write for your group project.
